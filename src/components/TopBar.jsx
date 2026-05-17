@@ -40,9 +40,12 @@ const resolveConfig = (route, state, nav) => {
     const standing = state.standings.find((s) => s.id === route.standingId);
     return {
       left: {
+        // A standing's natural home is Portfolio, regardless of which
+        // top-level menu the user entered the detail from — both the
+        // label and the destination route to Portfolio.
         type: "back",
-        label: ROOT_LABEL[detailRoot] || "Back",
-        onClick: () => nav.goRoot(detailRoot),
+        label: "Portfolio",
+        onClick: () => nav.goRoot("portfolio"),
       },
       rightCTA: standing
         ? {
@@ -108,7 +111,7 @@ const resolveConfig = (route, state, nav) => {
           }
         : {
             key: "create-standing",
-            label: "Invest",
+            label: "Continue",
             variant: "primary",
             onClick: () => nav.goCommit(route.basketId),
           },

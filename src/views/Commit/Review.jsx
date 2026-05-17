@@ -74,15 +74,13 @@ const Review = ({ basket, level, frequency, onBack, onCommit }) => {
         {isOneTime ? (
           <p>
             A one-time purchase converts your amount into direct shares today,
-            weighted by the basket's current composition. No subscription, no
-            ongoing fee — the resulting holdings sit in your direct holdings and
-            you can sell them at any time.
+            weighted by the basket's current composition. The resulting holdings
+            sit in your direct holdings and you can sell them at any time.
           </p>
         ) : (
           <p>
             You can adjust, pause, or retract this standing at any time from
-            your standings view. No exit fees, no holding period. The view
-            itself is tracked by the platform whether you back it or not.
+            your standings view.
           </p>
         )}
         <p>

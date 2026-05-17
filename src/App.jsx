@@ -36,14 +36,22 @@ const App = () => {
   const inThemeDetail = route.name === "theme-detail";
   const inConfirmation = route.name === "confirmation";
 
-  // Basket, Commit, and Confirmation all live under Discover.
-  // StandingDetail and ThemeDetail live under whatever opened them
-  // (Discover by default).
+  // Which top-level menu a detail route reports as its "home".
+  //   - Basket/Commit/Confirmation always live under Discover.
+  //   - StandingDetail always lives under Portfolio (a standing's
+  //     natural home, regardless of which menu the user entered from).
+  //   - ThemeDetail follows the entry point (themes don't have a
+  //     single natural home — they show up in both Discover and
+  //     Portfolio surfaces).
   const detailRoot = route.from || "discover";
-  let sidebarActive;
-  if (inBasketDetail || inCommit || inConfirmation) sidebarActive = "discover";
-  else if (inStandingDetail || inThemeDetail) sidebarActive = detailRoot;
-  else sidebarActive = route.name;
+  const ROUTE_ROOT = {
+    "basket-detail": "discover",
+    commit: "discover",
+    confirmation: "discover",
+    "standing-detail": "portfolio",
+    "theme-detail": detailRoot,
+  };
+  const sidebarActive = ROUTE_ROOT[route.name] ?? route.name;
 
   const goRoot = (name) => setRoute({ name });
   const goDiscover = () => goRoot("discover");
@@ -77,6 +85,8 @@ const App = () => {
     if (inStandingDetail) return `standing-detail-${route.standingId}`;
     if (inThemeDetail) return `theme-detail-${route.themeId}`;
     if (inConfirmation) {
+      if (route.kind === "retract")
+        return `confirmation-retract-${route.basketId}`;
       return `confirmation-${route.standingId ?? `once-${route.basketId}-${route.level}`}`;
     }
     return route.name;
@@ -99,6 +109,7 @@ const App = () => {
           standingId={route.standingId}
           from={detailRoot}
           onLeave={() => goRoot(detailRoot)}
+          onRetracted={goConfirmation}
         />
       );
     }
@@ -125,10 +136,12 @@ const App = () => {
     if (inConfirmation) {
       return (
         <Confirmation
+          kind={route.kind}
           basketId={route.basketId}
           level={route.level}
           frequency={route.frequency}
           standingId={route.standingId}
+          value={route.value}
           onDone={() => {
             if (route.standingId) {
               goStanding(route.standingId, "discover");

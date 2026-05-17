@@ -120,7 +120,7 @@ const BasketDetail = ({ basketId, onBack, onCommit, onViewStanding }) => {
           </Button>
         ) : (
           <Button size="lg" className="mt-5" onClick={onCommit}>
-            Invest
+            Continue
           </Button>
         )}
       </Card>

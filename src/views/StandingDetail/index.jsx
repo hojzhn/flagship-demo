@@ -26,11 +26,11 @@ const ACTIVITY_PREVIEW = 4;
 // Label for the top-level menu the user entered from. Drives the
 // breadcrumb's first crumb so the path reflects the actual entry point.
 const ROOT_LABEL = {
-  discover: "Discover",
+  discover: "Portfolio",
   portfolio: "Portfolio",
 };
 
-const StandingDetail = ({ standingId, from = "discover", onLeave }) => {
+const StandingDetail = ({ standingId, from = "discover", onLeave, onRetracted }) => {
   const { state, dispatch } = useStandings();
   const standing = state.standings.find((s) => s.id === standingId);
 
@@ -113,13 +113,18 @@ const StandingDetail = ({ standingId, from = "discover", onLeave }) => {
 
   // Retracting a standing doesn't liquidate the position — the user already
   // owns those shares. Convert the basket's current value into direct
-  // holdings and hand them off to the reducer alongside the retract.
+  // holdings and hand them off to the reducer alongside the retract,
+  // then route to the retract confirmation page (falls back to onLeave
+  // if no confirmation handler was provided).
   const handleRetract = () => {
-    const newHoldings = basket
-      ? basketToDirectHoldings(basket, standing.currentValue)
-      : [];
+    const value = standing.currentValue;
+    const newHoldings = basket ? basketToDirectHoldings(basket, value) : [];
     dispatch(actions.retract(standing.id, newHoldings));
-    onLeave?.();
+    if (onRetracted) {
+      onRetracted({ kind: "retract", basketId: standing.basketId, value });
+    } else {
+      onLeave?.();
+    }
   };
 
   return (

@@ -4,14 +4,17 @@ import Icon from "../../components/Icon";
 import { findBasket } from "../../data/Baskets.js";
 import { fmtMoney, fmtPct } from "../../data/Format.js";
 
-// Order confirmation. Renders after Commit's handleCommit dispatches,
-// regardless of whether the result was a recurring standing or a
-// one-time purchase. `frequency === "one-time"` toggles the copy and
-// the primary CTA destination.
+// Three confirmation modes, switched by `kind`:
+//   "purchase" — one-time buy. Shares settled into direct holdings.
+//   "standing" — recurring standing was created.
+//   "retract"  — recurring standing was retracted; the basket has
+//                been disbanded and its holdings moved into direct
+//                holdings (the user keeps everything they bought).
 //
 // Animation: the success badge scale-springs in, then the title, the
 // summary card, and the CTA fade up in sequence so the page reads as
 // a deliberate landing rather than a snap.
+
 const FREQ = {
   weekly: { label: "Weekly", noun: "week", perYear: 52 },
   monthly: { label: "Monthly", noun: "month", perYear: 12 },
@@ -25,16 +28,43 @@ const Row = ({ label, children }) => (
   </div>
 );
 
-const Confirmation = ({ basketId, level, frequency, standingId, onDone }) => {
+const Confirmation = ({
+  kind: kindProp,
+  basketId,
+  level,
+  frequency,
+  standingId,
+  value,
+  onDone,
+}) => {
   const basket = findBasket(basketId);
   if (!basket) {
     return <div className="text-[14px] text-ink-muted">Order not found.</div>;
   }
 
-  const isOneTime = frequency === "one-time";
+  // Back-compat: callers that don't pass `kind` get the old inference.
+  const kind = kindProp ?? (frequency === "one-time" ? "purchase" : "standing");
+  const isPurchase = kind === "purchase";
+  const isStanding = kind === "standing";
+  const isRetract = kind === "retract";
+
   const freq = FREQ[frequency];
-  const annualized = isOneTime ? level : level * (freq?.perYear ?? 12);
+  const annualized = isStanding ? level * (freq?.perYear ?? 12) : 0;
   const annualFee = annualized * basket.expenseRatio;
+
+  const title = isRetract
+    ? "Standing retracted"
+    : isPurchase
+      ? "Purchase complete"
+      : "Standing created";
+
+  const body = isRetract
+    ? `${basket.name} has been disbanded. The ${fmtMoney(value)} you held through it has moved into your direct holdings.`
+    : isPurchase
+      ? `Your shares of ${basket.name} are now in your direct holdings.`
+      : `You are supporting ${basket.name} at ${fmtMoney(level)} per ${freq?.noun ?? "month"}. You can adjust or retract this standing at any time.`;
+
+  const ctaLabel = standingId ? "View your standing" : "View portfolio";
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center space-y-6 py-12 text-center">
@@ -54,13 +84,9 @@ const Confirmation = ({ basketId, level, frequency, standingId, onDone }) => {
         className="space-y-2"
       >
         <h1 className="text-[28px] font-bold leading-[1.15] tracking-tight text-ink">
-          {isOneTime ? "Purchase complete" : "Standing created"}
+          {title}
         </h1>
-        <p className="text-[14px] leading-[1.5] text-ink-muted">
-          {isOneTime
-            ? `Your shares of ${basket.name} are now in your direct holdings.`
-            : `You are supporting ${basket.name} at ${fmtMoney(level)} per ${freq?.noun ?? "month"}. You can adjust or retract this standing at any time.`}
-        </p>
+        <p className="text-[14px] leading-[1.5] text-ink-muted">{body}</p>
       </motion.div>
 
       <motion.div
@@ -72,19 +98,32 @@ const Confirmation = ({ basketId, level, frequency, standingId, onDone }) => {
         <Card className="p-5">
           <div className="divide-y divide-hairline">
             <Row label="Basket">{basket.name}</Row>
-            <Row label={isOneTime ? "Amount" : "Level"}>
-              {isOneTime ? (
-                <span className="tnum">{fmtMoney(level)} one-time</span>
-              ) : (
-                <span className="tnum">
-                  {fmtMoney(level)} per {freq?.noun ?? "month"}
+
+            {isRetract ? (
+              <Row label="Moved">
+                <span className="tnum">{fmtMoney(value)}</span>{" "}
+                <span className="text-ink-muted">
+                  ({basket.holdings.length} instrument
+                  {basket.holdings.length === 1 ? "" : "s"})
                 </span>
-              )}
-            </Row>
+              </Row>
+            ) : (
+              <Row label={isPurchase ? "Amount" : "Level"}>
+                {isPurchase ? (
+                  <span className="tnum">{fmtMoney(level)} one-time</span>
+                ) : (
+                  <span className="tnum">
+                    {fmtMoney(level)} per {freq?.noun ?? "month"}
+                  </span>
+                )}
+              </Row>
+            )}
+
             <Row label="Settled into">
-              {isOneTime ? "Direct holdings" : "New standing"}
+              {isStanding ? "New standing" : "Direct holdings"}
             </Row>
-            {!isOneTime && (
+
+            {isStanding && (
               <Row label="Annual fee">
                 <span className="tnum">{fmtPct(basket.expenseRatio, 2)}</span>{" "}
                 <span className="text-ink-muted">
@@ -105,7 +144,7 @@ const Confirmation = ({ basketId, level, frequency, standingId, onDone }) => {
         onClick={onDone}
         className="rounded-[8px] bg-accent px-6 py-2.5 text-[14px] font-semibold text-white shadow-card transition-transform duration-150 hover:scale-[1.04] hover:bg-accent-hover"
       >
-        {standingId ? "View your standing" : "View portfolio"}
+        {ctaLabel}
       </motion.button>
     </div>
   );
