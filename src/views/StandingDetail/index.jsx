@@ -16,6 +16,7 @@ import Card from "../../components/Card";
 import Pill from "../../components/Pill";
 import Button from "../../components/Button";
 import Breadcrumb from "../../components/Breadcrumb";
+import Modal from "../../components/Modal";
 import SectionHeader from "../../components/SectionHeader";
 import HoldingsTable from "../../components/HoldingsTable";
 import Activity from "./Activity";
@@ -30,7 +31,12 @@ const ROOT_LABEL = {
   portfolio: "Portfolio",
 };
 
-const StandingDetail = ({ standingId, from = "discover", onLeave, onRetracted }) => {
+const StandingDetail = ({
+  standingId,
+  from = "discover",
+  onLeave,
+  onRetracted,
+}) => {
   const { state, dispatch } = useStandings();
   const standing = state.standings.find((s) => s.id === standingId);
 
@@ -81,6 +87,9 @@ const StandingDetail = ({ standingId, from = "discover", onLeave, onRetracted })
     const t = setTimeout(() => setThemesMounted(true), 670);
     return () => clearTimeout(t);
   }, [activityExpanded]);
+
+  // Retract is destructive; guard it behind a confirmation modal.
+  const [retractOpen, setRetractOpen] = useState(false);
 
   if (!standing) {
     return (
@@ -146,7 +155,7 @@ const StandingDetail = ({ standingId, from = "discover", onLeave, onRetracted })
           </div>
           <div className="mt-2 text-[13px] text-ink-muted">
             <div className="flex flex-row gap-2">
-              <div>Managed by {basket?.curator || "—"}</div>
+              <div>Managed by {basket?.curator || "-"}</div>
               <div>·</div>
               <span className="tnum">{fmtMoney(standing.level)}</span> / month
               <div>·</div>
@@ -168,7 +177,11 @@ const StandingDetail = ({ standingId, from = "discover", onLeave, onRetracted })
             <Button variant="outline" size="md" onClick={handlePause}>
               {paused ? "Resume" : "Pause"}
             </Button>
-            <Button variant="danger" size="md" onClick={handleRetract}>
+            <Button
+              variant="danger"
+              size="md"
+              onClick={() => setRetractOpen(true)}
+            >
               Retract
             </Button>
           </div>
@@ -272,6 +285,38 @@ const StandingDetail = ({ standingId, from = "discover", onLeave, onRetracted })
           </AnimatePresence>
         </div>
       </div>
+
+      <Modal open={retractOpen} onClose={() => setRetractOpen(false)}>
+        <h2 className="text-[18px] font-semibold tracking-tight text-ink">
+          Retract this standing?
+        </h2>
+        <p className="mt-2 text-[13px] leading-[1.55] text-ink-muted">
+          {basket?.name || "This basket"} will be disbanded. The{" "}
+          <span className="tnum text-ink">
+            {fmtMoney(standing.currentValue)}
+          </span>{" "}
+          you hold through it will move into your direct holdings.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => setRetractOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            size="md"
+            onClick={() => {
+              setRetractOpen(false);
+              handleRetract();
+            }}
+          >
+            Retract
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

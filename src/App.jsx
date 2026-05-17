@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
+import SmallScreenBlocker from "./components/SmallScreenBlocker";
 import Discover from "./views/Discover";
 import BasketDetail from "./views/BasketDetail";
 import Commit from "./views/Commit";
@@ -9,6 +10,16 @@ import StandingDetail from "./views/StandingDetail";
 import ThemeDetail from "./views/ThemeDetail";
 import Portfolio from "./views/Portfolio";
 import Confirmation from "./views/Confirmation";
+
+// Initial theme follows the OS / browser preference. Run synchronously
+// so the very first paint already has `.dark` applied if the user is
+// in dark mode.
+const initialTheme = () => {
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+};
 
 const App = () => {
   // Route is an object so detail pages can carry an id alongside the name.
@@ -22,12 +33,32 @@ const App = () => {
   // menu the user entered the detail from, so the sidebar + back link
   // reflect that.
   const [route, setRoute] = useState({ name: "discover" });
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState(initialTheme);
+
+  // Sync the .dark class to the current theme. Runs on mount (so the
+  // initial OS preference is reflected) and on every toggle.
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
+
+  // Follow OS theme changes while the user hasn't explicitly toggled
+  // in this session. Once they click the toggle, `userOverride.current`
+  // stays true and we stop tracking the OS preference.
+  const userOverride = useRef(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e) => {
+      if (userOverride.current) return;
+      setTheme(e.matches ? "dark" : "light");
+    };
+    mq.addEventListener?.("change", handler);
+    return () => mq.removeEventListener?.("change", handler);
+  }, []);
 
   const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.classList.toggle("dark", next === "dark");
+    userOverride.current = true;
+    setTheme((t) => (t === "light" ? "dark" : "light"));
   };
 
   const inBasketDetail = route.name === "basket-detail";
@@ -37,30 +68,50 @@ const App = () => {
   const inConfirmation = route.name === "confirmation";
 
   // Which top-level menu a detail route reports as its "home".
-  //   - Basket/Commit/Confirmation always live under Discover.
-  //   - StandingDetail always lives under Portfolio (a standing's
-  //     natural home, regardless of which menu the user entered from).
-  //   - ThemeDetail follows the entry point (themes don't have a
-  //     single natural home — they show up in both Discover and
-  //     Portfolio surfaces).
+  //   - Basket / Commit          → Discover (browsing flow).
+  //   - Confirmation             → depends on what was just done:
+  //                                  retract starts on Portfolio
+  //                                  (the standing lived there), so
+  //                                  it stays under Portfolio.
+  //                                  purchase / standing creation
+  //                                  came out of Discover.
+  //   - StandingDetail           → Portfolio (a standing's natural
+  //                                home, regardless of entry path).
+  //   - ThemeDetail              → entry point (themes show up in
+  //                                both Discover and Portfolio).
   const detailRoot = route.from || "discover";
-  const ROUTE_ROOT = {
-    "basket-detail": "discover",
-    commit: "discover",
-    confirmation: "discover",
-    "standing-detail": "portfolio",
-    "theme-detail": detailRoot,
-  };
-  const sidebarActive = ROUTE_ROOT[route.name] ?? route.name;
+  const sidebarRoot = (() => {
+    switch (route.name) {
+      case "basket-detail":
+      case "commit":
+        return "discover";
+      case "confirmation":
+        return route.kind === "retract" ? "portfolio" : "discover";
+      case "standing-detail":
+        return "portfolio";
+      case "theme-detail":
+        return detailRoot;
+      default:
+        return route.name;
+    }
+  })();
+  const sidebarActive = sidebarRoot;
 
-  const goRoot = (name) => setRoute({ name });
+  // `tab` is optional on goRoot so callers returning from a detail
+  // page can ask the top-level view (currently only Portfolio) to
+  // open at a specific tab.
+  const goRoot = (name, tab) =>
+    setRoute(tab ? { name, tab } : { name });
   const goDiscover = () => goRoot("discover");
   const goBasket = (basketId) => setRoute({ name: "basket-detail", basketId });
   const goCommit = (basketId) => setRoute({ name: "commit", basketId });
   const goStanding = (standingId, from = "discover") =>
     setRoute({ name: "standing-detail", standingId, from });
-  const goTheme = (themeId, from = "discover") =>
-    setRoute({ name: "theme-detail", themeId, from });
+  // `fromTab` records which Portfolio tab the user opened the theme
+  // from. The back button in ThemeDetail's topbar passes it back to
+  // goRoot so the Portfolio tab is preserved across the round trip.
+  const goTheme = (themeId, from = "discover", fromTab) =>
+    setRoute({ name: "theme-detail", themeId, from, fromTab });
   // Hand the full order off to the confirmation page so it can show
   // the right copy (purchase vs standing) and route the final CTA.
   const goConfirmation = (order) =>
@@ -117,7 +168,7 @@ const App = () => {
       return (
         <ThemeDetail
           themeId={route.themeId}
-          onBack={() => goRoot(detailRoot)}
+          onBack={() => goRoot(detailRoot, route.fromTab)}
           onSelectBasket={goBasket}
         />
       );
@@ -168,8 +219,9 @@ const App = () => {
     if (route.name === "portfolio") {
       return (
         <Portfolio
+          initialTab={route.tab}
           onSelectStanding={(id) => goStanding(id, "portfolio")}
-          onSelectTheme={(id) => goTheme(id, "portfolio")}
+          onSelectTheme={(id, fromTab) => goTheme(id, "portfolio", fromTab)}
         />
       );
     }
@@ -208,6 +260,7 @@ const App = () => {
           </div>
         </div>
       </main>
+      <SmallScreenBlocker />
     </div>
   );
 };

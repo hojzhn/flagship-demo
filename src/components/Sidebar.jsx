@@ -7,12 +7,14 @@ const NAV = [
     items: [
       { id: "discover", label: "Discover", icon: "discover" },
       { id: "portfolio", label: "Portfolio", icon: "portfolio" },
-      { id: "activity", label: "Activity", icon: "activity" },
+      { id: "activity", label: "Activity", icon: "activity", disabled: true },
     ],
   },
   {
     label: "System",
-    items: [{ id: "settings", label: "Settings", icon: "settings" }],
+    items: [
+      { id: "settings", label: "Settings", icon: "settings", disabled: true },
+    ],
   },
 ];
 
@@ -25,7 +27,7 @@ const Sidebar = ({ active, onSelect }) => (
       </div>
       <div className="leading-tight">
         <div className="text-[13px] font-semibold text-ink">Flagship</div>
-        <div className="text-2xs text-ink-subtle">Personal · Pro</div>
+        <div className="text-2xs text-ink-subtle">Personal</div>
       </div>
       <button
         className="ml-auto grid h-6 w-6 place-items-center rounded-md text-ink-subtle hover:bg-sidebarHover hover:text-ink"
@@ -50,15 +52,19 @@ const Sidebar = ({ active, onSelect }) => (
           <ul className="space-y-0.5">
             {section.items.map((item) => {
               const isActive = active === item.id;
+              const isDisabled = item.disabled;
               return (
                 <li key={item.id}>
                   <button
-                    onClick={() => onSelect(item.id)}
+                    onClick={isDisabled ? undefined : () => onSelect(item.id)}
+                    disabled={isDisabled}
                     className={[
                       "group flex w-full items-center gap-2.5 rounded-[7px] px-2 py-1.5 text-[13px] transition-colors",
                       isActive
                         ? "bg-accent text-white shadow-card"
-                        : "text-ink hover:bg-sidebarHover",
+                        : isDisabled
+                          ? "cursor-not-allowed text-ink-subtle opacity-50"
+                          : "text-ink hover:bg-sidebarHover",
                     ].join(" ")}
                   >
                     <Icon
@@ -67,7 +73,9 @@ const Sidebar = ({ active, onSelect }) => (
                         "h-[15px] w-[15px] " +
                         (isActive
                           ? "text-white"
-                          : "text-ink-muted group-hover:text-ink")
+                          : isDisabled
+                            ? "text-ink-subtle"
+                            : "text-ink-muted group-hover:text-ink")
                       }
                     />
                     <span className="font-medium">{item.label}</span>

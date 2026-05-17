@@ -64,7 +64,10 @@ const resolveConfig = (route, state, nav) => {
       left: {
         type: "back",
         label: ROOT_LABEL[detailRoot] || "Back",
-        onClick: () => nav.goRoot(detailRoot),
+        // Restore the Portfolio tab the user came from (e.g. they
+        // clicked a theme on the Themes tab) so the round trip lands
+        // them back where they were.
+        onClick: () => nav.goRoot(detailRoot, route.fromTab),
       },
       rightCTA: null,
       showSearch: false,

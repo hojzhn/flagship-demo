@@ -23,8 +23,11 @@ const TABS = [
 // banner appear constantly on diversified portfolios.
 const CONCENTRATION_THRESHOLD = 0.15;
 
-const Portfolio = ({ onSelectStanding, onSelectTheme }) => {
-  const [tab, setTab] = useState("standings");
+const Portfolio = ({ onSelectStanding, onSelectTheme, initialTab }) => {
+  // Initial tab can be seeded from the route (when the user returns
+  // from a detail page that recorded which tab they left from), so
+  // tab selection is preserved across the round trip.
+  const [tab, setTab] = useState(initialTab || "standings");
   const { state } = useStandings();
 
   const total = portfolioTotal(state.standings, state.directHoldings);
@@ -91,7 +94,10 @@ const Portfolio = ({ onSelectStanding, onSelectTheme }) => {
           )}
           {tab === "instruments" && <Instruments state={state} />}
           {tab === "themes" && (
-            <Themes state={state} onSelectTheme={onSelectTheme} />
+            <Themes
+              state={state}
+              onSelectTheme={(id) => onSelectTheme?.(id, tab)}
+            />
           )}
         </motion.div>
       </AnimatePresence>

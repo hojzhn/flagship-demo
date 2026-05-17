@@ -38,11 +38,11 @@ const ThemeDetail = ({ themeId, onBack, onSelectBasket }) => {
 
   return (
     <div className="space-y-10">
-      {/* Breadcrumb */}
+      {/* Breadcrumb — "Themes" is non-clickable since there's no
+          standalone Themes page to land on; the topbar back is the
+          way out. */}
       <nav className="text-[13px] text-ink-muted">
-        <button onClick={onBack} className="text-accent hover:underline">
-          Themes
-        </button>
+        <span>Themes</span>
         <span> · </span>
         <span className="text-ink">{theme.name}</span>
       </nav>

@@ -59,7 +59,7 @@ const Confirmation = ({
       : "Standing created";
 
   const body = isRetract
-    ? `${basket.name} has been disbanded. The ${fmtMoney(value)} you held through it has moved into your direct holdings.`
+    ? `${basket.name} has been disbanded. The ${fmtMoney(value)} you held through it has moved into your direct holdings. You keep every share you bought.`
     : isPurchase
       ? `Your shares of ${basket.name} are now in your direct holdings.`
       : `You are supporting ${basket.name} at ${fmtMoney(level)} per ${freq?.noun ?? "month"}. You can adjust or retract this standing at any time.`;

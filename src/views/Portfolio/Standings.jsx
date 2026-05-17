@@ -115,7 +115,7 @@ const Standings = ({ state, onSelectStanding }) => {
           title: "Direct holdings",
           tag: null,
           sharePct: Math.round(directSharePct * 100),
-          level: "—",
+          level: "-",
           total: fmtMoney(directValue),
           gainPct: undefined,
           onClick: undefined,

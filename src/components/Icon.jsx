@@ -84,6 +84,14 @@ const paths = {
     </g>
   ),
 
+  // Used by the small-screen blocker.
+  desktop: (
+    <g {...stroke}>
+      <rect x="3" y="4" width="18" height="13" rx="2" />
+      <path d="M9 21h6M12 17v4" />
+    </g>
+  ),
+
   // Status / delta glyphs. Bolder stroke for `check` so it reads
   // crisply inside the small filled circle; filled triangles for the
   // up/down performance indicators.
