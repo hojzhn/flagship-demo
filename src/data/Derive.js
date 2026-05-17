@@ -60,18 +60,28 @@ export function unifiedInstruments(standings, directHoldings) {
     }
   }
 
+  // Roll every direct-holding record for the same instrument into a
+  // single "Direct" source so the Instruments tab shows one Direct
+  // row per instrument, even when the user has bought it across
+  // several one-time purchases.
   for (const dh of directHoldings) {
     const inst = findInstrument(dh.instrumentId);
     if (!inst) continue;
     const arr = bySource.get(dh.instrumentId) ?? [];
-    arr.push({
-      kind: "direct",
-      basketId: null,
-      basketName: "Direct",
-      standingId: null,
-      shares: dh.shares,
-      value: dh.shares * inst.price,
-    });
+    const existing = arr.find((s) => s.kind === "direct");
+    if (existing) {
+      existing.shares += dh.shares;
+      existing.value += dh.shares * inst.price;
+    } else {
+      arr.push({
+        kind: "direct",
+        basketId: null,
+        basketName: "Direct holdings",
+        standingId: null,
+        shares: dh.shares,
+        value: dh.shares * inst.price,
+      });
+    }
     bySource.set(dh.instrumentId, arr);
   }
 
@@ -253,8 +263,37 @@ export function basketsForTheme(themeId) {
 export function instrumentsForTheme(themeId) {
   const theme = THEMES.find((t) => t.id === themeId);
   if (!theme) return [];
-  return theme.instruments
-    .map((id) => findInstrument(id))
+  return theme.instruments.map((id) => findInstrument(id)).filter(Boolean);
+}
+
+// ----- Basket → direct holdings -------------------------------------
+//
+// Converts a basket and a dollar amount into a list of direct holding
+// records (one per basket instrument, weighted by the basket's
+// composition at current instrument prices). Used in two places:
+//   - One-time purchase from the commit flow: the user buys $X of the
+//     basket, and the resulting shares land in direct holdings (no
+//     standing is created).
+//   - Retracting an active standing: the user keeps the shares they've
+//     already accumulated, so the standing's currentValue is split
+//     across the basket and added as direct holdings.
+
+export function basketToDirectHoldings(basket, totalValue, now = new Date()) {
+  if (!basket || totalValue <= 0) return [];
+  const stamp = now.getTime();
+  return basket.holdings
+    .map((h) => {
+      const inst = findInstrument(h.instrumentId);
+      if (!inst) return null;
+      const value = totalValue * h.weight;
+      const shares = value / inst.price;
+      return {
+        id: `dh-${h.instrumentId}-${stamp}-${Math.random().toString(36).slice(2, 8)}`,
+        instrumentId: h.instrumentId,
+        shares,
+        acquiredAt: now.toISOString().slice(0, 10),
+      };
+    })
     .filter(Boolean);
 }
 
@@ -359,7 +398,7 @@ export function activityForStanding(standing, now = new Date()) {
   events.push({
     date: standing.startedAt,
     title: "First deployment",
-    body: `You began backing this theme at ${fmtMoney(standing.level)} / month.`,
+    body: `You began this standing at ${fmtMoney(standing.level)} / month.`,
   });
 
   // Monthly deployments at the 1st of each month after startedAt.

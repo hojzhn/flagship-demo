@@ -30,7 +30,7 @@ const ThemeCard = ({ theme, portfolioTotal, onClick }) => {
     <button
       onClick={onClick}
       disabled={!onClick}
-      className="block w-full rounded-macos text-left transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default"
+      className="block w-full rounded-macos text-left transition-transform duration-150 ease-out enabled:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default"
     >
       <Card>
         {/* Header: name/desc on left, gap pill + totals on right */}
@@ -71,7 +71,7 @@ const ThemeCard = ({ theme, portfolioTotal, onClick }) => {
         <div className="mt-2.5 flex items-center gap-5 text-[13px]">
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            <span className="font-medium text-ink">Backed</span>
+            <span className="font-medium text-ink">Standing</span>
             <span className="tnum text-ink-muted">
               {fmtMoney(theme.backed)}
             </span>

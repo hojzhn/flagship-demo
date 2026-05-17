@@ -7,14 +7,10 @@
 // rounded button; pass any additional Tailwind classes via `className`.
 
 const VARIANTS = {
-  primary:
-    "bg-accent text-white shadow-card hover:bg-accent-hover",
-  outline:
-    "border border-hairline bg-elevated text-ink hover:bg-black/[0.04]",
-  danger:
-    "border border-hairline bg-elevated text-danger hover:bg-danger-soft",
-  ghost:
-    "text-accent hover:bg-accent-soft",
+  primary: "bg-accent text-white shadow-card hover:bg-accent-hover",
+  outline: "border border-hairline bg-elevated text-ink hover:bg-black/[0.08]",
+  danger: "border border-hairline bg-elevated text-danger hover:bg-danger-soft",
+  ghost: "text-accent hover:bg-accent-soft",
 };
 
 const SIZES = {
@@ -33,7 +29,7 @@ const Button = ({
   <button
     {...rest}
     className={
-      "inline-flex items-center justify-center gap-1.5 rounded-[8px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 " +
+      "inline-flex items-center justify-center gap-1.5 rounded-[8px] font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-60 " +
       VARIANTS[variant] +
       " " +
       SIZES[size] +

@@ -1,5 +1,6 @@
 import Card from "../../components/Card";
 import Pill from "../../components/Pill";
+import Tag from "../../components/Tag";
 import Icon from "../../components/Icon";
 import { fmtMoney, fmtPct } from "../../data/Format.js";
 import { standingGain } from "../../data/Derive.js";
@@ -19,16 +20,14 @@ const BasketCard = ({ basket, standing, onClick }) => {
     <button
       onClick={onClick}
       disabled={!onClick}
-      className="block w-full rounded-macos text-left transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default"
+      className="block w-full rounded-macos text-left transition-transform duration-150 ease-out enabled:hover:scale-[101%] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default"
     >
       <Card>
         {/* Row 1: ✓ (if backed) | name + description | holding + perf (if backed) */}
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <h3 className="text-[16px] font-semibold tracking-tight text-ink flex flex-row items-center gap-2">
-              <Pill tone="outline" size="sm">
-                {basket.curator}
-              </Pill>
+              <Tag>{basket.curator}</Tag>
               {basket.name}
               {hasStanding && (
                 <div className="inline grid h-4 w-4 place-items-center rounded-full bg-success text-white">

@@ -1,34 +1,26 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
-import Icon from "./components/Icon";
-import Button from "./components/Button";
 import Discover from "./views/Discover";
 import BasketDetail from "./views/BasketDetail";
 import Commit from "./views/Commit";
 import StandingDetail from "./views/StandingDetail";
 import ThemeDetail from "./views/ThemeDetail";
 import Portfolio from "./views/Portfolio";
-import { findBasket } from "./data/Baskets.js";
-
-// Top-level routes the StandingDetail can hang under. Determines which
-// sidebar item stays highlighted and which page the back link returns
-// to. New roots get a label here.
-const ROOT_LABEL = {
-  discover: "Discover",
-  portfolio: "Portfolio",
-};
+import Confirmation from "./views/Confirmation";
 
 const App = () => {
   // Route is an object so detail pages can carry an id alongside the name.
   //   { name: "discover" } | { name: "portfolio" } | ...
   //   { name: "basket-detail",   basketId:   "ai-infra-expansion" }
   //   { name: "commit",          basketId:   "ai-infra-expansion" }
-  //   { name: "standing-detail", standingId: "std-ai-infra-1", from: "portfolio" }
-  //   { name: "theme-detail",    themeId:    "ai-infrastructure" }
+  //   { name: "standing-detail", standingId: "std-ai-infra-1",   from: "portfolio" }
+  //   { name: "theme-detail",    themeId:    "ai-infrastructure", from: "portfolio" }
   //
-  // `from` on standing-detail records which top-level menu the user
-  // entered the detail from, so the sidebar + back link reflect that.
+  // `from` on standing-detail / theme-detail records which top-level
+  // menu the user entered the detail from, so the sidebar + back link
+  // reflect that.
   const [route, setRoute] = useState({ name: "discover" });
   const [theme, setTheme] = useState("light");
 
@@ -42,37 +34,71 @@ const App = () => {
   const inCommit = route.name === "commit";
   const inStandingDetail = route.name === "standing-detail";
   const inThemeDetail = route.name === "theme-detail";
-  const inDetail =
-    inBasketDetail || inCommit || inStandingDetail || inThemeDetail;
+  const inConfirmation = route.name === "confirmation";
 
-  // Basket/Commit/Theme detail pages always live under Discover.
-  // StandingDetail lives under whatever opened it (Discover by default).
-  const standingRoot = route.from || "discover";
+  // Basket, Commit, and Confirmation all live under Discover.
+  // StandingDetail and ThemeDetail live under whatever opened them
+  // (Discover by default).
+  const detailRoot = route.from || "discover";
   let sidebarActive;
-  if (inBasketDetail || inCommit || inThemeDetail) sidebarActive = "discover";
-  else if (inStandingDetail) sidebarActive = standingRoot;
+  if (inBasketDetail || inCommit || inConfirmation) sidebarActive = "discover";
+  else if (inStandingDetail || inThemeDetail) sidebarActive = detailRoot;
   else sidebarActive = route.name;
 
   const goRoot = (name) => setRoute({ name });
   const goDiscover = () => goRoot("discover");
-  const goBasket = (basketId) =>
-    setRoute({ name: "basket-detail", basketId });
+  const goBasket = (basketId) => setRoute({ name: "basket-detail", basketId });
   const goCommit = (basketId) => setRoute({ name: "commit", basketId });
   const goStanding = (standingId, from = "discover") =>
     setRoute({ name: "standing-detail", standingId, from });
-  const goTheme = (themeId) => setRoute({ name: "theme-detail", themeId });
+  const goTheme = (themeId, from = "discover") =>
+    setRoute({ name: "theme-detail", themeId, from });
+  // Hand the full order off to the confirmation page so it can show
+  // the right copy (purchase vs standing) and route the final CTA.
+  const goConfirmation = (order) =>
+    setRoute({ name: "confirmation", ...order });
+
+  // Navigation handlers grouped for TopBar — which decides its own
+  // layout based on the current route and calls back as needed.
+  const nav = { goRoot, goDiscover, goBasket, goCommit, goStanding, goTheme };
 
   // Wider columns for surfaces that hold tables / two-up layouts;
   // narrow reading column for everything else.
   const wideRoutes = inCommit || route.name === "portfolio";
   const contentMaxWidth = wideRoutes ? "max-w-[840px]" : "max-w-[840px]";
 
+  // Unique identity per view — drives <AnimatePresence>'s exit/enter.
+  // When this string changes, the old view fades out and the new one
+  // fades in. Detail routes include their id so navigating between
+  // siblings (basket A → basket B) also triggers a transition.
+  const routeKey = (() => {
+    if (inBasketDetail) return `basket-detail-${route.basketId}`;
+    if (inCommit) return `commit-${route.basketId}`;
+    if (inStandingDetail) return `standing-detail-${route.standingId}`;
+    if (inThemeDetail) return `theme-detail-${route.themeId}`;
+    if (inConfirmation) {
+      return `confirmation-${route.standingId ?? `once-${route.basketId}-${route.level}`}`;
+    }
+    return route.name;
+  })();
+
+  // Reset the content scroll position between view transitions. Runs
+  // on AnimatePresence's `onExitComplete`, which fires after the old
+  // view has finished fading out and before the new one mounts — so
+  // the incoming view starts its fade-in at scroll 0 rather than
+  // appearing scrolled-down and snapping up mid-animation.
+  const scrollRef = useRef(null);
+  const resetScroll = () => {
+    scrollRef.current?.scrollTo({ top: 0, left: 0 });
+  };
+
   const renderView = () => {
     if (inStandingDetail) {
       return (
         <StandingDetail
           standingId={route.standingId}
-          onLeave={() => goRoot(standingRoot)}
+          from={detailRoot}
+          onLeave={() => goRoot(detailRoot)}
         />
       );
     }
@@ -80,7 +106,7 @@ const App = () => {
       return (
         <ThemeDetail
           themeId={route.themeId}
-          onBack={goDiscover}
+          onBack={() => goRoot(detailRoot)}
           onSelectBasket={goBasket}
         />
       );
@@ -91,7 +117,25 @@ const App = () => {
           basketId={route.basketId}
           onCancel={() => goBasket(route.basketId)}
           onChange={goDiscover}
-          onCommitted={(standingId) => goStanding(standingId, "discover")}
+          onCommitted={goConfirmation}
+          onOneTimeBought={goConfirmation}
+        />
+      );
+    }
+    if (inConfirmation) {
+      return (
+        <Confirmation
+          basketId={route.basketId}
+          level={route.level}
+          frequency={route.frequency}
+          standingId={route.standingId}
+          onDone={() => {
+            if (route.standingId) {
+              goStanding(route.standingId, "discover");
+            } else {
+              goRoot("portfolio");
+            }
+          }}
         />
       );
     }
@@ -106,82 +150,17 @@ const App = () => {
       );
     }
     if (route.name === "discover") {
-      return (
-        <Discover onSelectBasket={goBasket} onSelectTheme={goTheme} />
-      );
+      return <Discover onSelectBasket={goBasket} />;
     }
     if (route.name === "portfolio") {
       return (
-        <Portfolio onSelectStanding={(id) => goStanding(id, "portfolio")} />
+        <Portfolio
+          onSelectStanding={(id) => goStanding(id, "portfolio")}
+          onSelectTheme={(id) => goTheme(id, "portfolio")}
+        />
       );
     }
     return null;
-  };
-
-  const renderTopBar = () => {
-    if (inStandingDetail) {
-      return (
-        <TopBar>
-          <button
-            onClick={() => goRoot(standingRoot)}
-            className="-ml-2 inline-flex items-center gap-0.5 rounded-[6px] px-2 py-1 text-[14px] font-medium text-accent hover:bg-accent-soft"
-          >
-            <Icon name="chevronLeft" className="h-4 w-4" />
-            {ROOT_LABEL[standingRoot] || "Back"}
-          </button>
-        </TopBar>
-      );
-    }
-    if (inThemeDetail) {
-      return (
-        <TopBar>
-          <button
-            onClick={goDiscover}
-            className="-ml-2 inline-flex items-center gap-0.5 rounded-[6px] px-2 py-1 text-[14px] font-medium text-accent hover:bg-accent-soft"
-          >
-            <Icon name="chevronLeft" className="h-4 w-4" />
-            Discover
-          </button>
-        </TopBar>
-      );
-    }
-    if (inCommit) {
-      const basket = findBasket(route.basketId);
-      return (
-        <TopBar>
-          <button
-            onClick={() => goBasket(route.basketId)}
-            className="-ml-2 inline-flex items-center gap-0.5 rounded-[6px] px-2 py-1 text-[14px] font-medium text-accent hover:bg-accent-soft"
-          >
-            <Icon name="chevronLeft" className="h-4 w-4" />
-            {basket?.name || "Back"}
-          </button>
-        </TopBar>
-      );
-    }
-    if (inBasketDetail) {
-      return (
-        <TopBar>
-          <button
-            onClick={goDiscover}
-            className="-ml-2 inline-flex items-center gap-0.5 rounded-[6px] px-2 py-1 text-[14px] font-medium text-accent hover:bg-accent-soft"
-          >
-            <Icon name="chevronLeft" className="h-4 w-4" />
-            Discover
-          </button>
-          <Button
-            size="sm"
-            className="ml-auto"
-            onClick={() => goCommit(route.basketId)}
-          >
-            Back this basket
-          </Button>
-        </TopBar>
-      );
-    }
-    return (
-      <TopBar view={route.name} theme={theme} onToggleTheme={toggleTheme} />
-    );
   };
 
   return (
@@ -191,9 +170,29 @@ const App = () => {
         onSelect={(id) => setRoute({ name: id })}
       />
       <main className="flex flex-1 flex-col overflow-hidden">
-        {renderTopBar()}
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className={`mx-auto ${contentMaxWidth}`}>{renderView()}</div>
+        <TopBar
+          route={route}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          nav={nav}
+        />
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto p-8 scroll-stable"
+        >
+          <div className={`mx-auto ${contentMaxWidth}`}>
+            <AnimatePresence mode="wait" onExitComplete={resetScroll}>
+              <motion.div
+                key={routeKey}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
+                {renderView()}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </main>
     </div>

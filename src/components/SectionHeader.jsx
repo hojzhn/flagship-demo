@@ -5,9 +5,9 @@
 const SectionHeader = ({ title, meta, description }) => (
   <header>
     <div className="flex items-baseline justify-between gap-4">
-      <h2 className="text-[24px] font-semibold tracking-tight text-ink">
+      <h3 className="text-[24px] font-semibold tracking-tight text-ink">
         {title}
-      </h2>
+      </h3>
       {meta && <div className="text-2xs text-ink-muted">{meta}</div>}
     </div>
     {description && (

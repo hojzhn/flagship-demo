@@ -3,11 +3,13 @@ import SectionHeader from "../../components/SectionHeader";
 import HoldingsTable from "../../components/HoldingsTable";
 import Button from "../../components/Button";
 import Pill from "../../components/Pill";
+import Breadcrumb from "../../components/Breadcrumb";
 import NewsCard from "./NewsCard";
 import { findBasket } from "../../data/Baskets.js";
 import { newsForBasket } from "../../data/Derive.js";
 import { fmtPct } from "../../data/Format.js";
 import { useStandings } from "../../data/StandingsContext.jsx";
+import Icon from "../../components/Icon.jsx";
 
 const Meta = ({ value, label, separator = " " }) => (
   <div>
@@ -34,30 +36,26 @@ const BasketDetail = ({ basketId, onBack, onCommit, onViewStanding }) => {
   return (
     <div className="space-y-10">
       {/* Breadcrumb */}
-      <nav className="text-[13px] text-ink-muted">
-        <button onClick={onBack} className="text-accent hover:underline">
-          Discover
-        </button>
-        <span> · </span>
-        <button onClick={onBack} className="text-accent hover:underline">
-          Baskets
-        </button>
-        <span> · </span>
-        <span className="text-ink">{basket.name}</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: "Discover", onClick: onBack },
+          { label: "Baskets", onClick: onBack },
+          { label: basket.name },
+        ]}
+      />
 
       {/* Title + meta */}
       <header>
         <div className="flex items-start justify-between gap-4">
-          <h1 className="text-[40px] font-bold leading-[1.1] tracking-tight text-ink">
+          <h1 className="text-[36px] font-bold leading-[1.1] flex flex-row items-center gap-2 tracking-tight text-ink">
             {basket.name}
+
+            {hasStanding && (
+              <div className="inline grid h-4 w-4 place-items-center rounded-full bg-success text-white">
+                <Icon name="check" className="h-3 w-3" />
+              </div>
+            )}
           </h1>
-          {hasStanding && (
-            <Pill tone="info" size="md">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              Backed
-            </Pill>
-          )}
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">
           <Meta value={basket.curator} label="Curator" separator=" · " />
@@ -104,11 +102,11 @@ const BasketDetail = ({ basketId, onBack, onCommit, onViewStanding }) => {
       {/* CTA */}
       <Card className="p-8">
         <h2 className="text-[20px] font-semibold tracking-tight text-ink">
-          {hasStanding ? "Your standing" : "Back this basket"}
+          {hasStanding ? "Your standing" : "Invest"}
         </h2>
         <p className="mt-1 text-[13px] text-ink-muted">
           {hasStanding
-            ? "You are already backing this basket. Open the standing to adjust, pause, or retract."
+            ? "Open the standing detail page to adjust, pause, or retract."
             : "Set a monthly level. Allocation, risk, and fees will appear as you decide."}
         </p>
         {hasStanding ? (
@@ -122,7 +120,7 @@ const BasketDetail = ({ basketId, onBack, onCommit, onViewStanding }) => {
           </Button>
         ) : (
           <Button size="lg" className="mt-5" onClick={onCommit}>
-            Back this basket
+            Invest
           </Button>
         )}
       </Card>
@@ -130,10 +128,7 @@ const BasketDetail = ({ basketId, onBack, onCommit, onViewStanding }) => {
       {/* News */}
       {news.length > 0 && (
         <section>
-          <SectionHeader
-            title="News on this thesis"
-            description="Each story shows how broadly it was reported. Tap a source to read the original."
-          />
+          <SectionHeader title="News" />
           <div className="mt-4 space-y-3">
             {news.map((item) => (
               <NewsCard key={item.id} item={item} />

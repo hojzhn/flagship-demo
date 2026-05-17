@@ -1,5 +1,5 @@
-const Page = ({ title, description, children }) => (
-  <div className="space-y-6">
+const Page = ({ title, description, children, className = "" }) => (
+  <div className={`space-y-6 ${className}`}>
     <header>
       <h1 className="text-[28px] font-semibold tracking-tight text-ink">
         {title}

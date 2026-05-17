@@ -14,7 +14,11 @@ import { SEED_STANDINGS, SEED_DIRECT_HOLDINGS } from "./Seed.js";
 //   ADJUST_LEVEL     change the level on an existing standing
 //   PAUSE            mark a standing as paused
 //   RESUME           mark a paused standing as active again
-//   RETRACT          remove a standing entirely
+//   RETRACT          remove a standing, but move its underlying shares
+//                    into directHoldings — retract ends the subscription,
+//                    it does not liquidate the position
+//   ADD_DIRECT_HOLDINGS  append direct-holding records (used by the
+//                        one-time purchase path)
 //   RESET            return state to seed values
 //
 // The reducer is the only place state changes. Components dispatch
@@ -71,10 +75,25 @@ function reducer(state, action) {
     }
 
     case "RETRACT": {
-      const { standingId } = action;
+      // Retract removes the standing but keeps the shares — they move
+      // into direct holdings so the user still owns what they bought.
+      // Pass `holdings` (an array of direct-holding records) computed
+      // by the caller via `basketToDirectHoldings` in Derive.js.
+      const { standingId, holdings = [] } = action;
       return {
         ...state,
         standings: state.standings.filter((s) => s.id !== standingId),
+        directHoldings: [...state.directHoldings, ...holdings],
+      };
+    }
+
+    case "ADD_DIRECT_HOLDINGS": {
+      // Used by the one-time purchase path in the commit flow: the
+      // caller computed the per-instrument records and we just merge
+      // them into directHoldings.
+      return {
+        ...state,
+        directHoldings: [...state.directHoldings, ...action.holdings],
       };
     }
 
@@ -123,6 +142,14 @@ export const actions = {
   }),
   pause: (standingId) => ({ type: "PAUSE", standingId }),
   resume: (standingId) => ({ type: "RESUME", standingId }),
-  retract: (standingId) => ({ type: "RETRACT", standingId }),
+  retract: (standingId, holdings = []) => ({
+    type: "RETRACT",
+    standingId,
+    holdings,
+  }),
+  addDirectHoldings: (holdings) => ({
+    type: "ADD_DIRECT_HOLDINGS",
+    holdings,
+  }),
   reset: () => ({ type: "RESET" }),
 };

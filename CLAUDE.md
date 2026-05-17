@@ -213,6 +213,24 @@ User wants the actual Apple system palette, not "Apple HIG applied to custom col
 - Corner radius: 10px for cards (`rounded-macos`), 7–8px for controls.
 - Status colors: `#34c759` success, `#ff9f0a` warning, `#ff3b30` danger.
 
+## Motion conventions
+
+**Page transitions** are driven by `framer-motion` in `App.jsx`. The renderView output is wrapped in `<AnimatePresence mode="wait">` keyed by `routeKey` — when the route changes, the old view fades + slides down (4px), the new one fades + slides up (4px) over 180ms. Detail routes include their id in the key so navigating between siblings (basket A → basket B) also transitions. Don't add ad-hoc fade-in classes on top-level view wrappers — the framer transition already covers it.
+
+**Row cascade inside a list** is plain CSS, defined in `index.css`:
+
+- `.row-enter` — fade + 6px upward slide (~320ms). Wrap each row in a list with this class and an inline `animationDelay` to stagger. Keep the animation on a **wrapper** element so the inner clickable row is free to own its own `transform` (hover lift) without conflict.
+
+Stagger delay convention: `${i * 50}ms`. Fast enough to read as one motion, slow enough to register as a cascade.
+
+Clickable card-style rows (BasketCard, ThemeCard, anything that wraps a `<Card>` in a `<button>`) get a subtle hover lift:
+
+```
+transition-transform duration-150 ease-out enabled:hover:-translate-y-0.5
+```
+
+Use `enabled:hover:` so disabled buttons stay flat. Don't change the shadow on hover — the lift alone reads cleanly against the existing `shadow-card`. Table-style rows (`<Row>` inside a `<Card padded={false}>`, like Portfolio Standings) use `hover:bg-black/[0.02]` instead of a lift — they're row dividers, not separated cards, so translating would break the row grid.
+
 ## CSS variable pattern — opacity support
 
 To use Tailwind opacity modifiers (`bg-accent/10`, `bg-success/10`, `bg-canvas/80`) with our themed colors, variables are exposed in **two forms**:

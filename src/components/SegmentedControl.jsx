@@ -7,7 +7,7 @@ const SegmentedControl = ({ options, value, onChange }) => (
           key={opt.value}
           onClick={() => onChange(opt.value)}
           className={
-            "rounded-[7px] px-3 py-1 text-[13px] font-medium transition-colors " +
+            "rounded-[7px] px-3 py-1 text-[13px] font-medium transition-[background-color,color,transform,box-shadow] duration-150 ease-out hover:scale-[1.02] " +
             (active
               ? "bg-elevated text-ink shadow-card"
               : "text-ink-muted hover:text-ink")

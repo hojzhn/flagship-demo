@@ -113,3 +113,70 @@ body {
 .hairline-t {
   box-shadow: inset 0 1px 0 var(--hairline);
 }
+
+/* Minimal, macOS-style scrollbars. Thin, translucent thumb on a
+ * transparent track; darkens slightly on hover. Firefox uses the
+ * standard `scrollbar-*` properties; WebKit (Safari/Chrome/Edge) uses
+ * the pseudo-element selectors. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  /* Transparent border collapses the visible thumb width so it reads
+   * thinner without changing the reserved gutter. */
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.32);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.dark *::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.35);
+}
+
+/* Reserve the scrollbar gutter so content does not shift when the
+ * scrollbar appears/disappears. Apply to any scrollable container. */
+.scroll-stable {
+  scrollbar-gutter: stable;
+}
+
+/* Row entrance animation. Page-level transitions live in App.jsx via
+ * framer-motion's AnimatePresence — this class only handles the
+ * per-row cascade inside a list.
+ *
+ * Pair `.row-enter` with an inline `animationDelay` to stagger. Keep
+ * it on a wrapper element so the inner clickable row owns its own
+ * `transform` (hover lift) without conflict. */
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.row-enter {
+  animation: row-enter 320ms ease-out both;
+}

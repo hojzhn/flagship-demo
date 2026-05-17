@@ -1,78 +1,50 @@
-import { useState } from "react";
 import { useStandings } from "../../data/StandingsContext.jsx";
-import { themeExposures, portfolioTotal } from "../../data/Derive.js";
 import { BASKETS } from "../../data/Baskets.js";
 import Page from "../../components/Page";
-import SegmentedControl from "../../components/SegmentedControl";
-import ThemeCard from "./ThemeCard";
+import Breadcrumb from "../../components/Breadcrumb";
 import BasketCard from "./BasketCard";
 
-const TABS = [
-  { value: "baskets", label: "Baskets" },
-  { value: "themes", label: "Themes" },
-];
+// Per-row entrance delay (ms). Keeps the cascade fast enough to read as
+// a single motion but slow enough to register as staggered.
+const STAGGER_MS = 50;
 
-const Discover = ({ onSelectBasket, onSelectTheme }) => {
-  const [tab, setTab] = useState("baskets");
+const Discover = ({ onSelectBasket }) => {
   const { state } = useStandings();
-  const total = portfolioTotal(state.standings, state.directHoldings);
-
-  const themes = themeExposures(state.standings, state.directHoldings)
-    .map((t) => ({
-      ...t,
-      gap: t.incidental,
-      themedBaskets: BASKETS.filter((b) => b.themedAround.includes(t.themeId)),
-    }))
-    .sort((a, b) => b.gap - a.gap);
-
   const baskets = [...BASKETS].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <Page
-      title="Discover"
-      description="Browse baskets curated by managers, or look at themes the platform reads across your holdings. Themes show you where your exposure sits, including where it does not match your backing."
-    >
-      <SegmentedControl options={TABS} value={tab} onChange={setTab} />
-
-      <div className="flex items-center justify-between text-2xs text-ink-muted">
-        <div>
-          {tab === "themes"
-            ? `${themes.length} themes`
-            : `${baskets.length} baskets`}
+    <div className="space-y-6">
+      <Breadcrumb
+        items={[{ label: "Discover" }, { label: "Baskets" }]}
+      />
+      <Page
+        title="Baskets"
+        description="Browse baskets curated by managers. Each basket holds the instruments expressing a thesis the platform tracks across your portfolio."
+      >
+        <div className="flex items-center justify-between text-2xs text-ink-muted">
+          <div>{baskets.length} baskets</div>
+          <div>Sorted by name ↓</div>
         </div>
-        <div>
-          Sorted by {tab === "themes" ? "gap (largest first)" : "name"} ↓
-        </div>
-      </div>
 
-      <div className="space-y-3">
-        {tab === "themes"
-          ? themes.map((theme) => (
-              <ThemeCard
-                key={theme.themeId}
-                theme={theme}
-                portfolioTotal={total}
-                onClick={
-                  onSelectTheme
-                    ? () => onSelectTheme(theme.themeId)
-                    : undefined
-                }
-              />
-            ))
-          : baskets.map((basket) => (
+        <div className="space-y-3">
+          {baskets.map((basket, i) => (
+            <div
+              key={basket.id}
+              className="row-enter"
+              style={{ animationDelay: `${i * STAGGER_MS}ms` }}
+            >
               <BasketCard
-                key={basket.id}
                 basket={basket}
-                standing={state.standings.find(
-                  (s) => s.basketId === basket.id,
-                )}
+                standing={state.standings.find((s) => s.basketId === basket.id)}
                 onClick={
                   onSelectBasket ? () => onSelectBasket(basket.id) : undefined
                 }
               />
-            ))}
-      </div>
-    </Page>
+            </div>
+          ))}
+        </div>
+      </Page>
+    </div>
   );
 };
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useStandings } from "../../data/StandingsContext.jsx";
 import {
   portfolioTotal,
@@ -22,7 +23,7 @@ const TABS = [
 // banner appear constantly on diversified portfolios.
 const CONCENTRATION_THRESHOLD = 0.15;
 
-const Portfolio = ({ onSelectStanding }) => {
+const Portfolio = ({ onSelectStanding, onSelectTheme }) => {
   const [tab, setTab] = useState("standings");
   const { state } = useStandings();
 
@@ -65,20 +66,35 @@ const Portfolio = ({ onSelectStanding }) => {
         <SegmentedControl options={TABS} value={tab} onChange={setTab} />
       </div>
 
-      {/* Concentration alert — only on Standings tab */}
-      {tab === "standings" && topAlert && (
-        <ConcentrationAlert
-          alert={topAlert}
-          onViewInInstruments={() => setTab("instruments")}
-        />
-      )}
-
-      {/* Tab content */}
-      {tab === "standings" && (
-        <Standings state={state} onSelectStanding={onSelectStanding} />
-      )}
-      {tab === "instruments" && <Instruments state={state} />}
-      {tab === "themes" && <Themes state={state} />}
+      {/* Tab content. Keyed by the active tab so AnimatePresence
+          crossfades + slides between Standings / Instruments / Themes.
+          `mode="wait"` lets the outgoing tab fully fade before the new
+          one mounts, and `initial={false}` keeps the first paint
+          quiet — the App-level route transition already covers that. */}
+      <AnimatePresence initial={false} mode="wait">
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="space-y-6"
+        >
+          {tab === "standings" && topAlert && (
+            <ConcentrationAlert
+              alert={topAlert}
+              onViewInInstruments={() => setTab("instruments")}
+            />
+          )}
+          {tab === "standings" && (
+            <Standings state={state} onSelectStanding={onSelectStanding} />
+          )}
+          {tab === "instruments" && <Instruments state={state} />}
+          {tab === "themes" && (
+            <Themes state={state} onSelectTheme={onSelectTheme} />
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 };

@@ -8,8 +8,8 @@ const TONES = {
 };
 
 const SIZES = {
-  sm: "px-2 py-0.5 text-2xs",
-  md: "px-2.5 py-1 text-[12px]",
+  sm: "px-2 py-1 text-2xs leading-none",
+  md: "px-2.5 py-1.5 text-[12px] leading-none",
 };
 
 const Pill = ({

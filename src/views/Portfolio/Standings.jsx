@@ -1,12 +1,8 @@
 import { findBasket } from "../../data/Baskets.js";
 import { findInstrument } from "../../data/Instruments.js";
-import {
-  tenureDays,
-  portfolioTotal,
-  standingGain,
-} from "../../data/Derive.js";
-import { fmtMoney, fmtPct, fmtDays } from "../../data/Format.js";
-import Pill from "../../components/Pill";
+import { portfolioTotal, standingGain } from "../../data/Derive.js";
+import { fmtMoney, fmtPct } from "../../data/Format.js";
+import Tag from "../../components/Tag";
 import Icon from "../../components/Icon";
 
 const COLS = "grid-cols-12";
@@ -23,7 +19,7 @@ const Header = () => (
 
 const Row = ({
   title,
-  pillLabel,
+  tag,
   sharePct,
   level,
   total,
@@ -44,17 +40,13 @@ const Row = ({
         (isLast ? "" : "hairline-b")
       }
     >
-      {/* Col 1: name + optional pill, share-of-assets subtitle */}
+      {/* Col 1: curator tag + basket name + share-of-assets subtitle */}
       <div className="col-span-6 min-w-0">
         <div className="flex items-center gap-2">
+          {tag && <Tag>{tag}</Tag>}
           <div className="truncate text-[14px] font-medium text-ink">
             {title}
           </div>
-          {pillLabel && (
-            <Pill tone="outline" size="sm">
-              {pillLabel}
-            </Pill>
-          )}
         </div>
         <div className="text-2xs text-ink-muted tnum">
           {sharePct}% of assets
@@ -98,8 +90,9 @@ const Standings = ({ state, onSelectStanding }) => {
     const { gainPct } = standingGain(std);
     return {
       key: std.id,
+      // Always show the full basket name; the curator goes in the tag.
       title: basket?.name || std.basketId,
-      pillLabel: fmtDays(tenureDays(std)),
+      tag: basket?.curator,
       sharePct: Math.round(sharePct * 100),
       level: `${fmtMoney(std.level)} / mo`,
       total: fmtMoney(std.currentValue),
@@ -120,7 +113,7 @@ const Standings = ({ state, onSelectStanding }) => {
       ? {
           key: "direct",
           title: "Direct holdings",
-          pillLabel: null,
+          tag: null,
           sharePct: Math.round(directSharePct * 100),
           level: "—",
           total: fmtMoney(directValue),

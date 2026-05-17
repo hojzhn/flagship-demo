@@ -13,13 +13,21 @@ const Header = () => (
   </div>
 );
 
-const ThemeRow = ({ theme, total, isLast }) => {
+const ThemeRow = ({ theme, total, isLast, onClick }) => {
   const exposurePct = total > 0 ? theme.value / total : 0;
   const backedPct = total > 0 ? theme.backed / total : 0;
   const incidentalPct = total > 0 ? theme.incidental / total : 0;
 
   return (
-    <div className={"px-5 py-4 " + (isLast ? "" : "hairline-b")}>
+    <button
+      onClick={onClick}
+      disabled={!onClick}
+      className={
+        "block w-full text-left px-5 py-4 transition-colors disabled:cursor-default " +
+        (onClick ? "hover:bg-black/[0.02] " : "") +
+        (isLast ? "" : "hairline-b")
+      }
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="text-[14px] font-semibold text-ink">
@@ -45,7 +53,7 @@ const ThemeRow = ({ theme, total, isLast }) => {
         <div className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-accent" />
           <span className="text-2xs font-semibold uppercase tracking-wider text-ink-subtle">
-            Backed
+            Standing
           </span>
           <span className="tnum text-ink">
             {fmtMoney(theme.backed)}{" "}
@@ -67,11 +75,11 @@ const ThemeRow = ({ theme, total, isLast }) => {
           </span>
         </div>
       </div>
-    </div>
+    </button>
   );
 };
 
-const Themes = ({ state }) => {
+const Themes = ({ state, onSelectTheme }) => {
   const total = portfolioTotal(state.standings, state.directHoldings);
   const exposures = themeExposures(state.standings, state.directHoldings)
     .filter((t) => t.value > 0)
@@ -86,6 +94,9 @@ const Themes = ({ state }) => {
           theme={theme}
           total={total}
           isLast={i === exposures.length - 1}
+          onClick={
+            onSelectTheme ? () => onSelectTheme(theme.themeId) : undefined
+          }
         />
       ))}
     </div>

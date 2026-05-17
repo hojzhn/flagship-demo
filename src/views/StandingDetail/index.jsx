@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useStandings, actions } from "../../data/StandingsContext.jsx";
 import { findBasket } from "../../data/Baskets.js";
 import { findTheme } from "../../data/Themes.js";
@@ -8,24 +9,78 @@ import {
   themesReinforcedByStanding,
   activityForStanding,
   standingGain,
+  basketToDirectHoldings,
 } from "../../data/Derive.js";
 import { fmtMoney, fmtPct, fmtDays } from "../../data/Format.js";
 import Card from "../../components/Card";
 import Pill from "../../components/Pill";
 import Button from "../../components/Button";
+import Breadcrumb from "../../components/Breadcrumb";
 import SectionHeader from "../../components/SectionHeader";
+import HoldingsTable from "../../components/HoldingsTable";
 import Activity from "./Activity";
 import ThemesReinforced from "./ThemesReinforced";
-import AllActivity from "./AllActivity";
-import StandingHoldings from "./StandingHoldings";
 
-const StandingDetail = ({ standingId, onLeave }) => {
+const ACTIVITY_PREVIEW = 4;
+
+// Label for the top-level menu the user entered from. Drives the
+// breadcrumb's first crumb so the path reflects the actual entry point.
+const ROOT_LABEL = {
+  discover: "Discover",
+  portfolio: "Portfolio",
+};
+
+const StandingDetail = ({ standingId, from = "discover", onLeave }) => {
   const { state, dispatch } = useStandings();
   const standing = state.standings.find((s) => s.id === standingId);
 
-  // Local view mode. "summary" is the default two-card + holdings view;
-  // "activity" swaps the two cards for the AllActivity full list.
-  const [mode, setMode] = useState("summary");
+  // Inline expand for the Activity card — mirrors Commit's Show-all
+  // choreography. Three gated states keep width and height from
+  // animating at the same time:
+  //
+  //   wideCard       — the card's animated width. On expand flips
+  //                    true immediately so width grows first; on
+  //                    collapse waits ~350ms (the row exit duration)
+  //                    so rows finish folding before width shrinks.
+  //   revealItems    — when extra events mount. On expand waits
+  //                    320ms (width grow); on collapse drops
+  //                    immediately so items start their exit.
+  //   themesMounted  — the ThemesReinforced card. On expand drops
+  //                    immediately so AnimatePresence plays its
+  //                    slide-out; on collapse waits ~670ms (rows
+  //                    exit + width shrink) so it slides back into
+  //                    actual flex space, not a 100%-wide neighbour.
+  const [activityExpanded, setActivityExpanded] = useState(false);
+
+  const [wideCard, setWideCard] = useState(false);
+  useEffect(() => {
+    if (activityExpanded) {
+      setWideCard(true);
+      return;
+    }
+    const t = setTimeout(() => setWideCard(false), 350);
+    return () => clearTimeout(t);
+  }, [activityExpanded]);
+
+  const [revealItems, setRevealItems] = useState(false);
+  useEffect(() => {
+    if (!activityExpanded) {
+      setRevealItems(false);
+      return;
+    }
+    const t = setTimeout(() => setRevealItems(true), 320);
+    return () => clearTimeout(t);
+  }, [activityExpanded]);
+
+  const [themesMounted, setThemesMounted] = useState(true);
+  useEffect(() => {
+    if (activityExpanded) {
+      setThemesMounted(false);
+      return;
+    }
+    const t = setTimeout(() => setThemesMounted(true), 670);
+    return () => clearTimeout(t);
+  }, [activityExpanded]);
 
   if (!standing) {
     return (
@@ -37,7 +92,7 @@ const StandingDetail = ({ standingId, onLeave }) => {
   const primaryTheme = basket?.themedAround[0]
     ? findTheme(basket.themedAround[0])
     : null;
-  const headerName = primaryTheme?.name || basket?.name || standing.basketId;
+  const headerName = basket?.name || standing.basketId;
 
   const days = tenureDays(standing);
   const total = portfolioTotal(state.standings, state.directHoldings);
@@ -53,41 +108,53 @@ const StandingDetail = ({ standingId, onLeave }) => {
   const paused = standing.status === "paused";
 
   const handlePause = () => {
-    dispatch(
-      paused ? actions.resume(standing.id) : actions.pause(standing.id),
-    );
+    dispatch(paused ? actions.resume(standing.id) : actions.pause(standing.id));
   };
 
+  // Retracting a standing doesn't liquidate the position — the user already
+  // owns those shares. Convert the basket's current value into direct
+  // holdings and hand them off to the reducer alongside the retract.
   const handleRetract = () => {
-    dispatch(actions.retract(standing.id));
+    const newHoldings = basket
+      ? basketToDirectHoldings(basket, standing.currentValue)
+      : [];
+    dispatch(actions.retract(standing.id, newHoldings));
     onLeave?.();
   };
 
   return (
     <div className="space-y-6">
+      <Breadcrumb
+        items={[
+          { label: ROOT_LABEL[from] || "Back", onClick: onLeave },
+          { label: headerName },
+        ]}
+      />
+
       {/* Header — always visible */}
       <div className="flex items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
-          <h1 className="text-[32px] font-bold leading-[1.1] tracking-tight text-ink">
-            {headerName}
-          </h1>
-          <div className="mt-3">
-            {paused ? (
-              <Pill tone="warning" size="md">
-                <span className="h-1.5 w-1.5 rounded-full bg-warning" />
-                Paused
-              </Pill>
-            ) : (
-              <Pill tone="info" size="md">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                Backed for {fmtDays(days)}
-              </Pill>
-            )}
+          <div className="flex flex-row gap-2">
+            <h1 className="text-[32px] font-bold leading-[1.1] tracking-tight text-ink">
+              {headerName}
+            </h1>
           </div>
-          <div className="mt-3 text-[13px] text-ink-muted">
-            Managed by {basket?.curator || "—"} ·{" "}
-            <span className="tnum">{fmtMoney(standing.level)}</span> / month ·{" "}
-            {basket?.holdings.length ?? 0} holdings
+          <div className="mt-2 text-[13px] text-ink-muted">
+            <div className="flex flex-row gap-2">
+              <div>Managed by {basket?.curator || "—"}</div>
+              <div>·</div>
+              <span className="tnum">{fmtMoney(standing.level)}</span> / month
+              <div>·</div>
+              {paused ? (
+                <div className="inline text-[var(--warning)] text-[13px] flex flex-row gap-2 items-center">
+                  Paused
+                </div>
+              ) : (
+                <div className="text-[var(--accent)] text-[13px] flex flex-row gap-2 items-center">
+                  Held for {fmtDays(days)}
+                </div>
+              )}{" "}
+            </div>
           </div>
           <div className="mt-4 flex gap-2">
             <Button variant="outline" size="md">
@@ -106,59 +173,99 @@ const StandingDetail = ({ standingId, onLeave }) => {
             {fmtMoney(standing.currentValue)}
           </div>
           <div className="mt-2 text-[13px] text-ink-muted tnum">
-            {fmtPct(portfolioPct, 0)} of portfolio
-            {totalContributed > 0 && (
-              <>
-                {" · "}
-                <span
-                  className={gainPct >= 0 ? "text-success" : "text-danger"}
-                >
-                  {gainPct >= 0 ? "+" : ""}
-                  {fmtPct(gainPct, 1)}
-                </span>{" "}
-                since you began
-              </>
-            )}
+            <div> {fmtPct(portfolioPct, 0)} of portfolio</div>
+            <div>
+              {totalContributed > 0 && (
+                <>
+                  <span
+                    className={gainPct >= 0 ? "text-success" : "text-danger"}
+                  >
+                    {gainPct >= 0 ? "+" : ""}
+                    {fmtPct(gainPct, 1)}
+                  </span>{" "}
+                  since you began
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Divider — content below swaps based on `mode` */}
+      {/* Divider — content below */}
       <div className="hairline-t pt-6">
-        {mode === "activity" ? (
-          <AllActivity
-            events={activity}
-            onBack={() => setMode("summary")}
-          />
-        ) : (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-5">
+        <div className="space-y-6">
+          {/* Activity (expandable) + ThemesReinforced. Same mechanic
+              as Commit's Allocation Show-all: Activity is on the left
+              with its width animated 50% → 100%; ThemesReinforced
+              (right) exits to the right via AnimatePresence + popLayout
+              when the activity card claims its space. */}
+          <div className="flex items-start gap-5">
+            <motion.div
+              initial={false}
+              animate={{
+                width: wideCard ? "100%" : "calc(50% - 10px)",
+              }}
+              transition={{ duration: 0.32, ease: "easeOut" }}
+              className="min-w-0 flex-shrink-0"
+            >
               <Card>
                 <Activity
                   events={activity}
-                  onSeeAll={() => setMode("activity")}
+                  limit={revealItems ? undefined : ACTIVITY_PREVIEW}
+                  stagger={revealItems}
+                  staggerFrom={ACTIVITY_PREVIEW}
+                  expanded={activityExpanded}
+                  onToggle={() => setActivityExpanded((v) => !v)}
                 />
               </Card>
-              <Card>
-                <ThemesReinforced themes={themes} />
-              </Card>
-            </div>
+            </motion.div>
 
-            {/* Holdings */}
-            {basket && (
-              <section>
+            <AnimatePresence initial={false} mode="popLayout">
+              {themesMounted && (
+                <motion.div
+                  key="themes"
+                  initial={{ x: 80, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: 80, opacity: 0 }}
+                  transition={{ duration: 0.28, ease: "easeOut" }}
+                  className="min-w-0 flex-1"
+                >
+                  <Card>
+                    <ThemesReinforced themes={themes} />
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Holdings — tied to `themesMounted` (not `activityExpanded`)
+              so on collapse it fades in together with the Themes card
+              once everything else has settled (t≈670ms), and on expand
+              it fades out immediately alongside the themes exit. */}
+          <AnimatePresence initial={false}>
+            {basket && themesMounted && (
+              <motion.section
+                key="holdings"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              >
                 <SectionHeader
-                  title="What this standing holds"
+                  title="Holdings under this standing"
                   meta={`${basket.holdings.length} instruments`}
-                  description="Shares from this standing alongside your total position in each instrument across the portfolio."
+                  description="What this standing's current value translates to across each instrument."
                 />
                 <Card padded={false} className="mt-4">
-                  <StandingHoldings standing={standing} state={state} />
+                  <HoldingsTable
+                    basket={basket}
+                    totalValue={standing.currentValue}
+                  />
                 </Card>
-              </section>
+              </motion.section>
             )}
-          </div>
-        )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
