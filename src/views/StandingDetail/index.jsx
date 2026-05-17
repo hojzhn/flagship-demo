@@ -90,6 +90,9 @@ const StandingDetail = ({
 
   // Retract is destructive; guard it behind a confirmation modal.
   const [retractOpen, setRetractOpen] = useState(false);
+  // Pause also gets a confirmation modal so the user knows the next
+  // contribution will be skipped. Resume is one-click (no modal).
+  const [pauseOpen, setPauseOpen] = useState(false);
 
   if (!standing) {
     return (
@@ -174,7 +177,11 @@ const StandingDetail = ({
             <Button variant="outline" size="md">
               Adjust
             </Button>
-            <Button variant="outline" size="md" onClick={handlePause}>
+            <Button
+              variant="outline"
+              size="md"
+              onClick={paused ? handlePause : () => setPauseOpen(true)}
+            >
               {paused ? "Resume" : "Pause"}
             </Button>
             <Button
@@ -285,6 +292,37 @@ const StandingDetail = ({
           </AnimatePresence>
         </div>
       </div>
+
+      <Modal open={pauseOpen} onClose={() => setPauseOpen(false)}>
+        <h2 className="text-[18px] font-semibold tracking-tight text-ink">
+          Pause this standing?
+        </h2>
+        <p className="mt-2 text-[13px] leading-[1.55] text-ink-muted">
+          Your next{" "}
+          <span className="tnum text-ink">{fmtMoney(standing.level)}</span>{" "}
+          contribution will be skipped, and no further payments will be drawn
+          until you resume. Your existing position stays in place.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => setPauseOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => {
+              setPauseOpen(false);
+              handlePause();
+            }}
+          >
+            Pause
+          </Button>
+        </div>
+      </Modal>
 
       <Modal open={retractOpen} onClose={() => setRetractOpen(false)}>
         <h2 className="text-[18px] font-semibold tracking-tight text-ink">

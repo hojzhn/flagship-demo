@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import NumberFlow from "@number-flow/react";
 import { findInstrument } from "../data/Instruments.js";
-import { fmtPct, fmtShares } from "../data/Format.js";
+import { fmtMoney, fmtPct, fmtShares } from "../data/Format.js";
 import Icon from "./Icon";
 
 // Shared formatter for the Allocation column. NumberFlow handles the
@@ -56,6 +56,16 @@ const Delta30D = ({ change }) => {
 //                  index render solid. Used by the Commit "Show all"
 //                  expand: the first N rows are already on screen so
 //                  only rows N..end cascade in.
+// `userView` (theme mode only):
+//   false (default) — original "In this theme" layout. Col 1 shows
+//                     ticker + a green check + share-count badge when
+//                     the user holds the instrument. Col 3 shows the
+//                     instrument's price + 30D delta. Header: "Price".
+//   true            — "Your portfolio" layout. Col 1 is just ticker.
+//                     Col 3 shows the user's current value with share
+//                     count under it ("-" when userShares is 0).
+//                     Header: "Holding". Rows with `dimmed: true` on
+//                     the instrument fade to opacity-40 for contrast.
 const HoldingsTable = ({
   basket,
   totalValue = 0,
@@ -64,6 +74,7 @@ const HoldingsTable = ({
   stagger = false,
   staggerFrom = 0,
   showDiff = true,
+  userView = false,
 }) => {
   const isTheme = !!instruments && !basket;
 
@@ -104,7 +115,7 @@ const HoldingsTable = ({
         <div
           className={(isTheme ? "col-span-8" : "col-span-3") + " text-right"}
         >
-          {isTheme ? "Price" : "Allocation"}
+          {isTheme ? (userView ? "Holding" : "Price") : "Allocation"}
         </div>
       </div>
 
@@ -120,21 +131,30 @@ const HoldingsTable = ({
 
         // The visible row: padded grid, hairline at the bottom. Kept as
         // the inner child so the outer height animation can collapse
-        // *including* the padding.
+        // *including* the padding. `dimmed` is a per-instrument flag
+        // (theme mode) that fades the row to give visual contrast
+        // between members and non-members.
         const rowInner = (
           <div
             className={
-              "grid grid-cols-12 items-center gap-4 px-5 py-3.5 " +
-              (last ? "" : "hairline-b")
+              "grid grid-cols-12 items-center gap-4 px-5 py-3.5 transition-opacity " +
+              (last ? "" : "hairline-b") +
+              (row.inst.dimmed ? " opacity-40" : "")
             }
           >
-            {/* Col 1: ticker (+ owned-shares badge in theme mode) + description */}
+            {/* Col 1: ticker + description.
+                In theme mode without userView ("In this theme"), the
+                user's holdings are surfaced inline next to the ticker
+                via a green check + share-count badge — that's how the
+                row signals what the user already owns of this member.
+                In userView the badge is dropped because col 3 already
+                shows the user's value and shares. */}
             <div className="col-span-4 min-w-0">
               <div className="flex items-center gap-2">
                 <div className="text-[14px] font-semibold tnum text-ink">
                   {row.inst.ticker}
                 </div>
-                {isTheme && row.inst.userShares > 0 && (
+                {isTheme && !userView && row.inst.userShares > 0 && (
                   <div className="inline-flex items-center gap-1">
                     <div className="grid h-3.5 w-3.5 place-items-center rounded-full bg-success text-white">
                       <Icon name="check" className="h-2 w-2" />
@@ -191,22 +211,41 @@ const HoldingsTable = ({
               </div>
             )}
 
-            {/* Col 3: allocation (basket) or price + 30D (theme) */}
+            {/* Col 3. Three layouts:
+                  basket mode             → allocation $ + share count
+                  theme + userView        → user value + share count
+                                            (or "-" when not held)
+                  theme + !userView       → price + 30D delta (original) */}
             <div
               className={
                 (isTheme ? "col-span-8" : "col-span-3") + " text-right"
               }
             >
               {isTheme ? (
-                <>
-                  <div className="text-[16px] font-semibold tnum text-ink">
-                    ${row.inst.price.toFixed(2)}
-                  </div>
-                  <div className="mt-0.5 flex items-center justify-end gap-1 text-2xs tnum">
-                    <Delta30D change={row.inst.change30d} />
-                    <span className="text-ink-subtle">30D</span>
-                  </div>
-                </>
+                userView ? (
+                  row.inst.userShares > 0 ? (
+                    <>
+                      <div className="text-[16px] font-semibold tnum text-ink">
+                        {fmtMoney(row.inst.userShares * row.inst.price)}
+                      </div>
+                      <div className="mt-0.5 text-2xs tnum text-ink-muted">
+                        {fmtShares(row.inst.userShares)} sh
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-[14px] text-ink-subtle">-</div>
+                  )
+                ) : (
+                  <>
+                    <div className="text-[16px] font-semibold tnum text-ink">
+                      ${row.inst.price.toFixed(2)}
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-end gap-1 text-2xs tnum">
+                      <Delta30D change={row.inst.change30d} />
+                      <span className="text-ink-subtle">30D</span>
+                    </div>
+                  </>
+                )
               ) : (
                 <>
                   <div className="text-[16px] font-semibold tnum text-ink">

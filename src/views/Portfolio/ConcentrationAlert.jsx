@@ -1,6 +1,9 @@
+import Icon from "../../components/Icon";
+
 // Warning banner shown above the Standings tab when a single instrument
 // makes up too much of the portfolio. Clicking "View in instruments"
-// switches the parent tab.
+// switches the parent tab. `onDismiss` hides the alert; the parent
+// tracks dismissals so it doesn't re-appear within a session.
 
 const wordFor = (n) => {
   const words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
@@ -12,7 +15,7 @@ const sourceText = (count) => {
   return `across ${wordFor(count)} sources`;
 };
 
-const ConcentrationAlert = ({ alert, onViewInInstruments }) => {
+const ConcentrationAlert = ({ alert, onViewInInstruments, onDismiss }) => {
   const pct = Math.round(alert.sharePct * 100);
   return (
     <div className="flex items-start justify-between gap-4 rounded-macos bg-warning-soft px-5 py-4">
@@ -24,12 +27,23 @@ const ConcentrationAlert = ({ alert, onViewInInstruments }) => {
           instrument.
         </p>
       </div>
-      <button
-        onClick={onViewInInstruments}
-        className="shrink-0 text-[13px] font-medium text-accent hover:underline"
-      >
-        View in instruments
-      </button>
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          onClick={onViewInInstruments}
+          className="text-[13px] font-medium text-accent hover:underline"
+        >
+          View in instruments
+        </button>
+        {onDismiss && (
+          <button
+            onClick={onDismiss}
+            aria-label="Dismiss alert"
+            className="grid h-6 w-6 place-items-center rounded-md text-ink-muted transition-colors hover:bg-black/[0.06] hover:text-ink"
+          >
+            <Icon name="close" className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
     </div>
   );
 };

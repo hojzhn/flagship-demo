@@ -84,6 +84,12 @@ const paths = {
     </g>
   ),
 
+  close: (
+    <g {...stroke}>
+      <path d="M6 6l12 12M18 6 6 18" />
+    </g>
+  ),
+
   // Used by the small-screen blocker.
   desktop: (
     <g {...stroke}>

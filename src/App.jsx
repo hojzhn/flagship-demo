@@ -35,6 +35,17 @@ const App = () => {
   const [route, setRoute] = useState({ name: "discover" });
   const [theme, setTheme] = useState(initialTheme);
 
+  // Dismissed concentration alerts (by ticker). Lives at the App
+  // level so the dismissal survives navigating away from Portfolio
+  // and back — Portfolio itself unmounts on every route change.
+  const [dismissedAlerts, setDismissedAlerts] = useState(() => new Set());
+  const dismissAlert = (ticker) =>
+    setDismissedAlerts((prev) => {
+      const next = new Set(prev);
+      next.add(ticker);
+      return next;
+    });
+
   // Sync the .dark class to the current theme. Runs on mount (so the
   // initial OS preference is reflected) and on every toggle.
   useEffect(() => {
@@ -220,6 +231,8 @@ const App = () => {
       return (
         <Portfolio
           initialTab={route.tab}
+          dismissedAlerts={dismissedAlerts}
+          onDismissAlert={dismissAlert}
           onSelectStanding={(id) => goStanding(id, "portfolio")}
           onSelectTheme={(id, fromTab) => goTheme(id, "portfolio", fromTab)}
         />
